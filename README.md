@@ -61,5 +61,5 @@ Executar a query abaixo no [GitHub GraphQL API Explorer](https://developer.githu
 ```
 ### Instruções
 
-- Antes de executar o código no Node.Js é necessário inserir na variável **acessToken** o seu [token de acesso pessoal](https://help.github.com/articles/creating-a-personal-access-token-for-the-command-line/)
-- O token de acesso pessoal não deve ser compartilhado com ninguém.
+- [Instalar o Node.js](https://nodejs.org/)
+- Antes de executar o script no Node.Js é necessário inserir na variável **acessToken** o seu [token de acesso pessoal](https://help.github.com/articles/creating-a-personal-access-token-for-the-command-line/). O token de acesso pessoal não deve ser compartilhado com ninguém.
