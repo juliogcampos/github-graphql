@@ -1,7 +1,10 @@
 // Object
 var obj = {
-  pullRequests: []
+  pullRequests: [],
+  comments : []
 }
+
+var pullRequestsNumbers = [];
 
 // Clean
 function clean() {
@@ -9,8 +12,11 @@ function clean() {
     pullRequests: []
   };
 
+  pullRequestsNumbers = [];
   lastCursor = '';
 }
+
+// Execute clean
 clean();
 
 // Requires
@@ -25,9 +31,9 @@ var fs = require('fs');
 var accessToken = '';
 
 // Variables
-var user = 'audacity';
-var repository = 'audacity';
-var amount = 2;
+var user = 'github';
+var repository = 'scientist';
+var amount = 1;
 var lastCursor = null;
 var query = `
 query github ($user: String!, $repository: String!, $lastCursor: String, $amount: Int!) {
@@ -79,31 +85,40 @@ query github ($user: String!, $repository: String!, $lastCursor: String, $amount
 }
 `;
 
-fetch('https://api.github.com/graphql', {
-  method: 'POST',
-  body: JSON.stringify({
-    query: query, 
-    variables: {
-      user: user,
-      repository: repository,
-      lastCursor: lastCursor,
-      amount: amount
-    },
-  }),
-  headers: {
-    'Authorization': `Bearer ${accessToken}`,
-  },
-}).then(res => res.json())
-  .then(body => store(body))
-  .then(data => fs.writeFile( user + '_' + repository + '.json', JSON.stringify(obj, null, '  '), callback))
-  .then(next => execute(next))
-  .catch(error => console.error(error));
+function extractPullRequests() {
 
-function store(body) {
+  fetch('https://api.github.com/graphql', {
+    method: 'POST',
+    body: JSON.stringify({
+      query: query, 
+      variables: {
+        user: user,
+        repository: repository,
+        lastCursor: lastCursor,
+        amount: amount
+      },
+    }),
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+    },
+  }).then(res => res.json())
+    .then(body => savePullRequests(body))
+    .then(data => fs.writeFile( user + '_' + repository + '.json', JSON.stringify(obj, null, '  '), callback))
+    .then(next => extractPullRequests(next))
+    .catch(error => console.error(error));
+}
+extractPullRequests();
+
+function savePullRequests(body) {
 
   for(var i = 0; i < amount; i++) {
+
     var item = body.data.repository.pullRequests.edges[i].node;
     obj.pullRequests.push(item);
+
+    var pullRequestNumber = body.data.repository.pullRequests.edges[i].node.number;
+    pullRequestsNumbers.push(pullRequestNumber);
+
     lastCursor = body.data.repository.pullRequests.pageInfo.endCursor;
     var hasNextPage = body.data.repository.pullRequests.pageInfo.hasNextPage;
   }
@@ -121,49 +136,3 @@ function store(body) {
 function callback(status) {
   console.log('Saved data!');
 }
-
-function execute(next) {
-
-fetch('https://api.github.com/graphql', {
-  method: 'POST',
-  body: JSON.stringify({
-    query: query, 
-    variables: {
-      user: user,
-      repository: repository,
-      lastCursor: lastCursor,
-      amount: amount
-    },
-  }),
-  headers: {
-    'Authorization': `Bearer ${accessToken}`,
-  },
-}).then(res => res.json())
-  .then(body => store(body))
-  .then(data => fs.writeFile('data.json', JSON.stringify(obj, null, '  '), callback))
-  .then(next => execute(next))
-  .catch(error => console.error(error));
-
-}
-
-/*
-  GitHub GraphQL
-  GitHub GraphQL API - https://developer.github.com/v4/explorer/
-  Documentação PullRequest - https://developer.github.com/v4/object/pullrequest/
-
-  GraphQL
-  Passing Arguments - https://graphql.org/graphql-js/passing-arguments/
-  Schemas and Types - http://graphql.org/learn/schema/#object-types-and-fields
-
-  NPM
-  node-fetch - https://www.npmjs.com/package/node-fetch
-
-  Tutorials
-  Usando Promisses - https://developer.mozilla.org/pt-BR/docs/Web/JavaScript/Guide/Usando_promises
-  Using Github GraphQL API with Node.js - https://www.scaledrone.com/blog/posts/graphql-tutorial-using-github-graphql-api-with-nodejs
-  Saving Data to JSON File with Node.js - https://www.youtube.com/watch?v=6iZiqQZBQJY
-
-  Questions
-  Write/add data in JSON file using node.js - https://stackoverflow.com/questions/36856232/write-add-data-in-json-file-using-node-js
-
-*/
