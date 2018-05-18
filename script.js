@@ -11,6 +11,7 @@ var accessToken = '';
 
 // Object
 var obj = {
+  totals: [],
   pullRequests: [],
   comments : []
 }
@@ -18,7 +19,8 @@ var obj = {
 // Variables
 var user = 'github';
 var repository = 'scientist';
-var amount = 1;
+var totalCount = 0;
+var amount = 0;
 var lastCursorPulls = null;
 var lastCursorComments = null;
 var hasNextPage = null;
@@ -26,6 +28,17 @@ var pullRequestsNumbers = [];
 var number = 79;
 
 // Queries
+
+var totalCount = `
+query totalCount ($user: String!, $repository: String!) {
+  repository(owner: $user, name: $repository) {
+    pullRequests(states: CLOSED) {
+      totalCount
+    }
+  }
+}
+`;
+
 var queryPullRequets = `
 query pullRequests ($user: String!, $repository: String!, $lastCursorPulls: String, $amount: Int!) {
   repository(owner: $user, name: $repository) {
@@ -89,7 +102,7 @@ query comments ($user: String!, $repository: String!, $lastCursorComments: Strin
               login
             }
             authorAssociation
-            body
+            bodyText
             createdAt
             editor {
               login
@@ -112,6 +125,40 @@ query comments ($user: String!, $repository: String!, $lastCursorComments: Strin
 }
 `;
 
+// Get total count of closed pull requests
+
+fetch('https://api.github.com/graphql', {
+  method: 'POST',
+  body: JSON.stringify({
+    query: totalCount, 
+    variables: {
+      user: user,
+      repository: repository
+    },
+  }),
+  headers: {
+    'Authorization': `Bearer ${accessToken}`,
+  },
+}).then(res => res.json())
+  .then(body => getTotalCount(body))
+  .catch(error => console.error(error));
+
+function getTotalCount(body) {
+  totalCount = body.data.repository.pullRequests.totalCount;
+
+  if (totalCount % 2 == 0) {
+    //  if totalCount is even, then amount must be a multiple of two
+    amount =  2;
+  } else {
+    //  totalCount is odd, then amount must be a multiple of one
+    amount = 1;
+  }
+
+  obj.totals.push({pullRequests: totalCount});
+  console.log("\n => " + user + "/" + repository + " has " + totalCount + " closed pull requests");
+  extractPullRequests();
+}
+
 function extractPullRequests() {
 
   fetch('https://api.github.com/graphql', {
@@ -130,11 +177,12 @@ function extractPullRequests() {
     },
   }).then(res => res.json())
     .then(body => savePullRequests(body))
-    .then(data => fs.writeFile( user + '_' + repository + '.json', JSON.stringify(obj, null, '  '), callback))
+    .then(data => fs.writeFile("\n=>" + user + '_' + repository + '.json', JSON.stringify(obj, null, '  '), callback))
     .then(next => {
         if (hasNextPage) {
           extractPullRequests(next);
         } else {
+          console.log("\n => " + obj.pullRequests.length + " pull requests saved!");
           extractComments();
         }
       }
@@ -142,27 +190,23 @@ function extractPullRequests() {
     .catch(error => console.error(error));
 }
 
-extractPullRequests();
-
 function savePullRequests(body) {
 
   hasNextPage = body.data.repository.pullRequests.pageInfo.hasNextPage;
 
-  if(hasNextPage) {
-    for(var i = 0; i < amount; i++) {
+  for(var i = 0; i < amount; i++) {
 
-      var item = body.data.repository.pullRequests.edges[i].node;
-      obj.pullRequests.push(item);
-      // console.log(item);
+    var item = body.data.repository.pullRequests.edges[i].node;
+    obj.pullRequests.push(item);
+    // console.log(item);
 
-      var pullRequestNumber = body.data.repository.pullRequests.edges[i].node.number;
-      pullRequestsNumbers.push(pullRequestNumber);
+    var pullRequestNumber = body.data.repository.pullRequests.edges[i].node.number;
+    pullRequestsNumbers.push(pullRequestNumber);
 
-      lastCursorPulls = body.data.repository.pullRequests.pageInfo.endCursor;
-    }
-      console.log("\n" + obj.pullRequests.length + " pull requests");
-      console.log("Cursor: " + lastCursorPulls);
+    lastCursorPulls = body.data.repository.pullRequests.pageInfo.endCursor;
   }
+    console.log("\n " + obj.pullRequests.length + " pull requests");
+    console.log(" endCursor: " + lastCursorPulls);
 }
 
 function extractComments() {
@@ -189,7 +233,7 @@ function extractComments() {
         if (hasNextPage) {
           extractComments(next);
         } else {
-          console.log("Finished!");
+          console.log("\n => " + obj.comments.length + " comments saved!");
         }
       }
     )
@@ -205,20 +249,19 @@ function saveComments(body) {
 
       var number = body.data.repository.pullRequest.number;
       var item = body.data.repository.pullRequest.comments.edges[i].node;
-      obj.comments.push({number: number, item: item});
+      obj.comments.push({number: number, data: item});
 
       lastCursorComments = body.data.repository.pullRequest.comments.pageInfo.endCursor;
     }
 
-    console.log("\n" + obj.comments.length + " comments");
-    console.log("Cursor: " + lastCursorComments);
+    console.log("\n " + obj.comments.length + " comments");
+    console.log(" endCursor: " + lastCursorComments);
   }
-
 }
 
 function callback(status) {
 
   if (hasNextPage) {
-    console.log('Saved data!');
+    console.log(' Saved data!');
   }
 }
