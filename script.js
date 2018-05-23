@@ -1,4 +1,4 @@
-// Requires
+// NPM packages
 var fetch = require('node-fetch');
 var fs = require('fs');
 
@@ -11,24 +11,22 @@ var accessToken = '';
 
 // Object
 var obj = {
-  totals: [],
-  pullRequests: [],
-  comments : []
+	totals: [],
+	pullRequests: [],
+	comments : []
 }
 
 // Variables
 var user = 'github';
 var repository = 'scientist';
-var totalCount = 0;
-var amount = 0;
-var lastCursorPulls = null;
-var lastCursorComments = null;
-var hasNextPage = null;
+var amount = 10; // Maximum is 100. It's recommended not to use high values
+var limit = 0;
+var endCursor = null;
 var pullRequestsNumbers = [];
-var number = 79;
+var number = 0;
+var index = 0;
 
 // Queries
-
 var totalCount = `
 query totalCount ($user: String!, $repository: String!) {
   repository(owner: $user, name: $repository) {
@@ -40,9 +38,9 @@ query totalCount ($user: String!, $repository: String!) {
 `;
 
 var queryPullRequets = `
-query pullRequests ($user: String!, $repository: String!, $lastCursorPulls: String, $amount: Int!) {
+query pullRequests ($user: String!, $repository: String!, $endCursor: String, $amount: Int!) {
   repository(owner: $user, name: $repository) {
-    pullRequests(first: $amount, after: $lastCursorPulls, states: CLOSED) {
+    pullRequests(first: $amount, after: $endCursor, states: CLOSED) {
       totalCount
       edges {
         node {
@@ -90,11 +88,12 @@ query pullRequests ($user: String!, $repository: String!, $lastCursorPulls: Stri
 `;
 
 var queryComments = `
-query comments ($user: String!, $repository: String!, $lastCursorComments: String, $number: Int!, $amount: Int!) {
+query comments ($user: String!, $repository: String!, $endCursor: String, $number: Int!, $amount: Int!) {
   repository(owner: $user, name: $repository) {
     pullRequest(number: $number) {
       number
-      comments(first: $amount, after: $lastCursorComments) {
+      url
+      comments(first: $amount, after: $endCursor) {
         totalCount
         edges {
           node {
@@ -128,140 +127,147 @@ query comments ($user: String!, $repository: String!, $lastCursorComments: Strin
 // Get total count of closed pull requests
 
 fetch('https://api.github.com/graphql', {
-  method: 'POST',
-  body: JSON.stringify({
-    query: totalCount, 
-    variables: {
-      user: user,
-      repository: repository
-    },
-  }),
+	method: 'POST',
+	body: JSON.stringify({
+		query: totalCount, 
+    	variables: {
+			user: user,
+			repository: repository
+    	},
+  	}),
   headers: {
-    'Authorization': `Bearer ${accessToken}`,
+	'Authorization': `Bearer ${accessToken}`,
   },
-}).then(res => res.json())
-  .then(body => getTotalCount(body))
-  .catch(error => console.error(error));
+})
+.then(res => res.json())
+.then(body => totalPullRequests(body))
+.catch(error => console.error(error));
 
-function getTotalCount(body) {
-  totalCount = body.data.repository.pullRequests.totalCount;
-
-  if (totalCount % 2 == 0) {
-    //  if totalCount is even, then amount must be a multiple of two
-    amount =  2;
-  } else {
-    //  totalCount is odd, then amount must be a multiple of one
-    amount = 1;
-  }
-
-  obj.totals.push({pullRequests: totalCount});
-  console.log("\n => " + user + "/" + repository + " has " + totalCount + " closed pull requests");
-  extractPullRequests();
+function totalPullRequests(body) {
+	var totalCount = body.data.repository.pullRequests.totalCount;
+	obj.totals.push({pullRequests: totalCount});
+	console.log("\n → " + user + "/" + repository + " has " + totalCount + " closed pull requests");
+	extractPullRequests();
 }
 
 function extractPullRequests() {
 
-  fetch('https://api.github.com/graphql', {
-    method: 'POST',
-    body: JSON.stringify({
-      query: queryPullRequets, 
-      variables: {
-        user: user,
-        repository: repository,
-        lastCursorPulls: lastCursorPulls,
-        amount: amount
-      },
-    }),
-    headers: {
-      'Authorization': `Bearer ${accessToken}`,
-    },
-  }).then(res => res.json())
+	fetch('https://api.github.com/graphql', {
+    	method: 'POST',
+    	body: JSON.stringify({
+    		query: queryPullRequets, 
+    		variables: {
+        		user: user,
+        		repository: repository,
+        		endCursor: endCursor,
+        		amount: amount
+      		},
+    	}),
+    	headers: {
+    		'Authorization': `Bearer ${accessToken}`,
+    	},
+  	})
+  	.then(res => res.json())
     .then(body => savePullRequests(body))
-    .then(data => fs.writeFile("\n=>" + user + '_' + repository + '.json', JSON.stringify(obj, null, '  '), callback))
-    .then(next => {
-        if (hasNextPage) {
-          extractPullRequests(next);
-        } else {
-          console.log("\n => " + obj.pullRequests.length + " pull requests saved!");
-          extractComments();
-        }
-      }
+    .then(data => fs.writeFile(user + '_' + repository + '.json', JSON.stringify(obj, null, '  '), callback))
+    .then(next => 
+		{
+	      	if (endCursor != null) {
+	         	extractPullRequests(next);
+	        } else {
+	         	console.log("\n → " + obj.pullRequests.length + " pull requests saved!");
+	         	number = pullRequestsNumbers[index];
+	         	extractComments();
+	        }
+	  	}
     )
     .catch(error => console.error(error));
 }
 
 function savePullRequests(body) {
 
-  hasNextPage = body.data.repository.pullRequests.pageInfo.hasNextPage;
+	endCursor = body.data.repository.pullRequests.pageInfo.endCursor;
+	var resultsPerPage = body.data.repository.pullRequests.edges.length;
 
-  for(var i = 0; i < amount; i++) {
+	if(amount == resultsPerPage) {
+		limit = amount;
+	} else {
+		limit = resultsPerPage;
+	}
 
-    var item = body.data.repository.pullRequests.edges[i].node;
-    obj.pullRequests.push(item);
-    // console.log(item);
-
-    var pullRequestNumber = body.data.repository.pullRequests.edges[i].node.number;
-    pullRequestsNumbers.push(pullRequestNumber);
-
-    lastCursorPulls = body.data.repository.pullRequests.pageInfo.endCursor;
-  }
-    console.log("\n " + obj.pullRequests.length + " pull requests");
-    console.log(" endCursor: " + lastCursorPulls);
+	for(var i = 0; i < limit; i++) {
+		var item = body.data.repository.pullRequests.edges[i].node;
+		obj.pullRequests.push(item);
+		var number = body.data.repository.pullRequests.edges[i].node.number;
+		pullRequestsNumbers.push(number);
+	}
 }
 
 function extractComments() {
 
-  fetch('https://api.github.com/graphql', {
-    method: 'POST',
-    body: JSON.stringify({
-      query: queryComments, 
-      variables: {
-        user: user,
-        number: number,
-        repository: repository,
-        lastCursorComments: lastCursorComments,
-        amount: amount
-      },
-    }),
-    headers: {
-      'Authorization': `Bearer ${accessToken}`,
-    },
-  }).then(res => res.json())
+	fetch('https://api.github.com/graphql', {
+   		method: 'POST',
+    	body: JSON.stringify({
+      	query: queryComments, 
+      	variables: {
+        	user: user,
+        	number: number,
+        	repository: repository,
+        	endCursor: endCursor,
+        	amount: amount
+      		},
+    	}),
+    	headers: {
+      		'Authorization': `Bearer ${accessToken}`,
+    	},
+  	})
+  	.then(res => res.json())
     .then(body => saveComments(body))
-    .then(data => fs.writeFile( user + '_' + repository + '.json', JSON.stringify(obj, null, '  '), callback))
-    .then(next => {
-        if (hasNextPage) {
-          extractComments(next);
-        } else {
-          console.log("\n => " + obj.comments.length + " comments saved!");
-        }
-      }
+    .then(data => fs.writeFile(user + '_' + repository + '.json', JSON.stringify(obj, null, '  '), callback))
+    .then(next => 
+    	{
+	        if (endCursor != null) {
+	        	extractComments(next);
+	        } else {
+	          	console.log("\n → " + obj.comments.length + " comments saved!");
+	          	index++;
+	          	var hasElement = pullRequestsNumbers[index]; 
+	          	if (hasElement != undefined) {
+	          		number = hasElement;
+	          		extractComments();
+	          	} else {
+	          		console.log("\n → Finished!");
+	          	}	        
+	        }
+      	}
     )
     .catch(error => console.error(error));
 }
 
 function saveComments(body) {
 
-  hasNextPage = body.data.repository.pullRequest.comments.pageInfo.hasNextPage;
+	endCursor = body.data.repository.pullRequest.comments.pageInfo.endCursor;
+	resultsPerPage = body.data.repository.pullRequest.comments.edges.length;
 
-  if (hasNextPage) {
-    for(var i = 0; i < amount; i++) {
+	if(amount == resultsPerPage) {
+		limit = amount;
+	} else {
+		limit = resultsPerPage;
+	}
 
-      var number = body.data.repository.pullRequest.number;
-      var item = body.data.repository.pullRequest.comments.edges[i].node;
-      obj.comments.push({number: number, data: item});
-
-      lastCursorComments = body.data.repository.pullRequest.comments.pageInfo.endCursor;
-    }
-
-    console.log("\n " + obj.comments.length + " comments");
-    console.log(" endCursor: " + lastCursorComments);
-  }
+	for(var i = 0; i < limit; i++) {
+		var number = body.data.repository.pullRequest.number;
+	  	var url = body.data.repository.pullRequest.url;
+	  	var item = body.data.repository.pullRequest.comments.edges[i].node;
+	  	obj.comments.push({number: number, url: url, data: item});
+	}
 }
 
 function callback(status) {
 
-  if (hasNextPage) {
-    console.log(' Saved data!');
-  }
+	/*
+	if(endCursor || endCursor != null) {
+		console.log(' Saved data!');
+	}
+	*/
 }
