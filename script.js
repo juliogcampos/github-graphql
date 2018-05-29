@@ -293,7 +293,7 @@ function extractPullRequests() {
     .then(body => savePullRequests(body))
     .then(next => {
       if (endCursor != null) {
-        console.log("   ⁞ " + pullRequestsNumbers.length + " pull requests of " + obj.totals[0].pullRequests);
+        console.log("   ⁞ " + pullRequestsNumbers.length + " of " + obj.totals[0].pullRequests + " pull requests");
         extractPullRequests(next);
       } else {
         number = pullRequestsNumbers[index];
@@ -347,14 +347,14 @@ function extractComments() {
       if (endCursor != null) {
         extractComments(next);
       } else {
-        console.log("   ⁞ Pull request " + (index + 1) + " of " + pullRequestsNumbers.length);
+        console.log("   ⁞ " + (index + 1) + " of " + pullRequestsNumbers.length + " pull requests");
         index++;
         var hasElement = pullRequestsNumbers[index];
         if (hasElement != undefined) {
           number = hasElement;
           extractComments();
         } else {
-          console.log("   ⁞ " + obj.comments.length + " comments extracted \n");
+          console.log("\n   ⁞ " + obj.comments.length + " comments extracted \n");
           obj.totals[0].comments = obj.comments.length;
           index = 0;
           number = pullRequestsNumbers[index];
@@ -410,14 +410,14 @@ function extractReviews() {
       if (endCursor != null) {
         extractReviews(next);
       } else {
-        console.log("   ⁞ Pull request " + (index + 1) + " of " + pullRequestsNumbers.length);
+        console.log("   ⁞ " + (index + 1) + " of " + pullRequestsNumbers.length + " pull requests");
         index++;
         var hasElement = pullRequestsNumbers[index];
         if (hasElement != undefined) {
           number = hasElement;
           extractReviews();
         } else {
-          console.log("   ⁞ " + obj.reviews.length + " reviews extracted \n");
+          console.log("\n   ⁞ " + obj.reviews.length + " reviews extracted \n");
           obj.totals[0].reviews = obj.reviews.length;
           index = 0;
           number = pullRequestsNumbers[index];
@@ -470,14 +470,14 @@ function extractReviewComments() {
       if (endCursor != null) {
         extractReviewComments(next);
       } else {
-        console.log("   ⁞ Pull request " + (index + 1) + " of " + pullRequestsNumbers.length);
+        console.log("   ⁞ " + (index + 1) + " of " + pullRequestsNumbers.length + " pull requests");
         index++;
         var hasElement = pullRequestsNumbers[index];
         if (hasElement != undefined) {
           number = hasElement;
           extractReviewComments();
         } else {
-          console.log("   ⁞ " + obj.reviewComments.length + " review comments extracted \n");
+          console.log("\n   ⁞ " + obj.reviewComments.length + " review comments extracted \n");
           obj.totals[0].reviewComments = obj.reviewComments.length;
           fs.writeFile(user + '_' + repository + '.json', JSON.stringify(obj, null, '  '), callback);
         }
@@ -506,4 +506,3 @@ function saveReviewComments(body) {
 function callback(body) {
   console.log(' • Saved data!');
 }
-
