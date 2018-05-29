@@ -7,7 +7,14 @@ var accessToken = '';
 
 // Object
 var obj = {
-  totals: [],
+  totals: [
+    {
+      "pullRequests": null,
+      "comments": null,
+      "reviews": null,
+      "reviewComments": null
+    }
+  ],
   pullRequests: [],
   comments: [],
   reviews: [],
@@ -258,7 +265,7 @@ fetch('https://api.github.com/graphql', {
 
 function totalPullRequests(body) {
   var totalCount = body.data.repository.pullRequests.totalCount;
-  obj.totals.push({pullRequests: totalCount});
+  obj.totals[0].pullRequests = totalCount;
   console.log('\033[2J'); // clear console
   console.log(" • " + user + "/" + repository + " has " + totalCount + " closed pull requests \n");
   console.log(" ⁞ Pull requests \n")
@@ -286,6 +293,7 @@ function extractPullRequests() {
     .then(body => savePullRequests(body))
     .then(next => {
       if (endCursor != null) {
+        console.log("   ⁞ " + pullRequestsNumbers.length + " pull requests of " + obj.totals[0].pullRequests);
         extractPullRequests(next);
       } else {
         number = pullRequestsNumbers[index];
@@ -312,7 +320,6 @@ function savePullRequests(body) {
     obj.pullRequests.push(item);
     var number = body.data.repository.pullRequests.edges[i].node.number;
     pullRequestsNumbers.push(number);
-    console.log("   ⁞ " + pullRequestsNumbers.length + " pull requests extracted");
   }
 }
 
@@ -348,6 +355,7 @@ function extractComments() {
           extractComments();
         } else {
           console.log("   ⁞ " + obj.comments.length + " comments extracted \n");
+          obj.totals[0].comments = obj.comments.length;
           index = 0;
           number = pullRequestsNumbers[index];
           console.log(" ⁞ Reviews \n")
@@ -410,6 +418,7 @@ function extractReviews() {
           extractReviews();
         } else {
           console.log("   ⁞ " + obj.reviews.length + " reviews extracted \n");
+          obj.totals[0].reviews = obj.reviews.length;
           index = 0;
           number = pullRequestsNumbers[index];
           console.log(" ⁞ review comments \n")
@@ -469,6 +478,7 @@ function extractReviewComments() {
           extractReviewComments();
         } else {
           console.log("   ⁞ " + obj.reviewComments.length + " review comments extracted \n");
+          obj.totals[0].reviewComments = obj.reviewComments.length;
           fs.writeFile(user + '_' + repository + '.json', JSON.stringify(obj, null, '  '), callback);
         }
       }
@@ -496,3 +506,4 @@ function saveReviewComments(body) {
 function callback(body) {
   console.log(' • Saved data!');
 }
+
