@@ -12,8 +12,8 @@ Executar a query abaixo no [GitHub GraphQL API Explorer](https://developer.githu
 
 ```
 {
-  repository(owner: "audacity", name: "audacity") {
-    pullRequests(first: 2, after: null, states: CLOSED) {
+  repository(owner: "github", name: "scientist") {
+    pullRequests(first: 5, after: null, states: CLOSED) {
       totalCount
       edges {
         node {
