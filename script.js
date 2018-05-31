@@ -23,7 +23,7 @@ var obj = {
 
 // Variables
 var user = 'github';
-var repository = 'scientist';
+var repository = 'fetch';
 var amount = 10; // Maximum is 100. It's recommended not to use high values
 var limit = 0;
 var endCursor = null;
@@ -96,8 +96,6 @@ var queryComments = `
 query comments ($user: String!, $repository: String!, $endCursor: String, $number: Int!, $amount: Int!) {
   repository(owner: $user, name: $repository) {
     pullRequest(number: $number) {
-      number
-      url
       comments(first: $amount, after: $endCursor) {
         totalCount
         edges {
@@ -114,6 +112,10 @@ query comments ($user: String!, $repository: String!, $endCursor: String, $numbe
             id
             lastEditedAt
             publishedAt
+            pullRequest {
+              number
+              url
+            }
             updatedAt
             viewerDidAuthor
           }
@@ -157,6 +159,7 @@ query reviews ($user: String!, $repository: String!, $endCursor: String, $number
             publishedAt
             pullRequest {
               number
+              url
             }
             state
             url
@@ -378,10 +381,8 @@ function saveComments(body) {
   }
 
   for (var i = 0; i < limit; i++) {
-    var number = body.data.repository.pullRequest.number;
-    var url = body.data.repository.pullRequest.url;
     var item = body.data.repository.pullRequest.comments.edges[i].node;
-    obj.comments.push({number: number, url: url, data: item});
+    obj.comments.push(item);
 
   }
 }
