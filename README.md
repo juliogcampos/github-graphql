@@ -12,48 +12,118 @@ Executar a query abaixo no [GitHub GraphQL API Explorer](https://developer.githu
 
 ```
 {
-  repository(owner: "github", name: "scientist") {
-    pullRequests(first: 5, after: null, states: CLOSED) {
+  repository(owner: "graphql", name: "graphiql") {
+    pullRequests(first: 10, after: null, states: CLOSED) {
       totalCount
       edges {
         node {
-          additions
+          number
+          url
+          title
+          bodyText
           author {
             login
           }
           authorAssociation
-          bodyText
-          changedFiles
-          closedAt
-          createdAt
-          deletions
-          labels(first: 100) {
-            nodes {
-              name
-            }
-          }
-          mergeable
-          merged
-          mergedAt
-          number
-          participants(first: 100) {
-            nodes {
-              name
-            }
-          }
-          publishedAt
-          resourcePath
           state
-          title
+          locked
+          changedFiles
+          deletions
+          createdAt
           updatedAt
-          viewerDidAuthor
-          viewerSubscription
+          publishedAt
+          closedAt
+          comments(first: 100) {
+            totalCount
+            edges {
+              node {
+                author {
+                  login
+                }
+                authorAssociation
+                bodyText
+                createdAt
+                editor {
+                  login
+                }
+                lastEditedAt
+                publishedAt
+                updatedAt
+                url
+              }
+            }
+            pageInfo {
+              hasNextPage
+              endCursor
+            }
+          }
+          commits(first: 100) {
+            totalCount
+            edges {
+              node {
+                commit {
+                  author {
+                    user {
+                      login
+                    }
+                  }
+                }
+                id
+                url
+              }
+            }
+          }
+          reviews(first: 100) {
+            totalCount
+            edges {
+              node {
+                author {
+                  login
+                }
+                authorAssociation
+                bodyText
+                commit {
+                  author {
+                    user {
+                      login
+                    }
+                  }
+                }
+                createdAt
+                id
+                publishedAt
+                state
+                submittedAt
+                updatedAt
+                url
+              }
+            }
+          }
+          reviewRequests(first: 100) {
+            totalCount
+            edges {
+              node {
+                id
+                requestedReviewer {
+                  __typename
+                }
+              }
+            }
+          }
+          timeline(first: 100) {
+            totalCount
+            edges {
+              comment: node {
+                __typename
+              }
+            }
+          }
         }
         cursor
       }
       pageInfo {
-        endCursor
         hasNextPage
+        endCursor
       }
     }
   }
