@@ -3,7 +3,7 @@ var fetch = require('node-fetch');
 var fs = require('fs');
 
 // GitHub access token - https://help.github.com/articles/creating-a-personal-access-token-for-the-command-line/
-var accessToken = '';
+var accessToken = '1b8e585c7bec196a3be67cc318894f9a86f657ec';
 
 // Object
 var obj = {
@@ -23,7 +23,7 @@ var obj = {
 
 // Variables
 var user = 'github';
-var repository = 'fetch';
+var repository = 'scientist';
 var amount = 10; // Maximum is 100. It's recommended not to use high values
 var limit = 0;
 var endCursor = null;
@@ -246,6 +246,12 @@ query reviewComments ($user: String!, $repository: String!, $endCursor: String, 
   }
 }
 `;
+
+// Check access token
+
+if (accessToken == '') {
+  console.log("variable 'access token' is empty!");
+}
 
 // Get total count of closed pull requests
 
@@ -499,7 +505,7 @@ function saveReviewComments(body) {
   }
 
   for (var i = 0; i < limit; i++) {
-    var item = body.data.repository.pullRequest.reviews.edges[i].node;
+    var item = body.data.repository.pullRequest.reviews.edges[i].node.comments;
     obj.reviewComments.push(item);
   }
 }
@@ -507,3 +513,28 @@ function saveReviewComments(body) {
 function callback(body) {
   console.log(' • Saved data!');
 }
+
+/*
+  GitHub GraphQL
+    GitHub GraphQL API - https://developer.github.com/v4/explorer/
+    Documentação PullRequest - https://developer.github.com/v4/object/pullrequest/
+
+  GraphQL
+    Passing Arguments - https://graphql.org/graphql-js/passing-arguments/
+    Schemas and Types - http://graphql.org/learn/schema/#object-types-and-fields
+
+  NPM
+    node-fetch - https://www.npmjs.com/package/node-fetch
+
+  Tutorials
+    Usando Promisses - https://developer.mozilla.org/pt-BR/docs/Web/JavaScript/Guide/Usando_promises
+    Arrow functions - https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Functions/Arrow_functions
+    JavaScript Array findIndex() Method - https://www.w3schools.com/jsref/jsref_findindex.asps
+    Using Github GraphQL API with Node.js - https://www.scaledrone.com/blog/posts/graphql-tutorial-using-github-graphql-api-with-nodejs
+    Saving Data to JSON File with Node.js - https://www.youtube.com/watch?v=6iZiqQZBQJY
+
+  Questions
+    Get the index of the object inside an array, matching a condition - https://stackoverflow.com/questions/15997879/get-the-index-of-the-object-inside-an-array-matching-a-condition
+    Write/add data in JSON file using node.js - https://stackoverflow.com/questions/36856232/write-add-data-in-json-file-using-node-js
+    Node.Js on windows - How to clear console - https://stackoverflow.com/questions/9006988/node-js-on-windows-how-to-clear-console
+*/
